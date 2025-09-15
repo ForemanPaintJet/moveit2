@@ -936,12 +936,30 @@ void ServoCalcs::suddenHalt(sensor_msgs::msg::JointState& joint_state,
 
 void ServoCalcs::updateJoints()
 {
-  // Get the latest joint group positions
-  current_state_ = planning_scene_monitor_->getStateMonitor()->getCurrentState();
-  current_state_->copyJointGroupPositions(joint_model_group_, internal_joint_state_.position);
-  current_state_->copyJointGroupVelocities(joint_model_group_, internal_joint_state_.velocity);
+  // Use only active joint names (skips mimic/passive joints)
+  const auto& active_joint_names = joint_model_group_->getActiveJointModelNames();
+  RCLCPP_INFO(rclcpp::get_logger("servo_debug"),
+              "Group '%s' has %zu active joints:", joint_model_group_->getName().c_str(), active_joint_names.size());
 
-  // Cache the original joints in case they need to be reset
+  for (const auto& name : active_joint_names)
+  {
+    RCLCPP_INFO(rclcpp::get_logger("servo_debug"), "  %s", name.c_str());
+  }
+
+  // Get the latest robot state
+  current_state_ = planning_scene_monitor_->getStateMonitor()->getCurrentState();
+
+  internal_joint_state_.position.resize(active_joint_names.size());
+  internal_joint_state_.velocity.resize(active_joint_names.size());
+
+  for (size_t i = 0; i < active_joint_names.size(); ++i)
+  {
+    const std::string& joint_name = active_joint_names[i];
+    internal_joint_state_.position[i] = current_state_->getJointPositions(joint_name)[0];
+    internal_joint_state_.velocity[i] = current_state_->getJointVelocities(joint_name)[0];
+  }
+
+  // Cache original state in case we need to reset
   original_joint_state_ = internal_joint_state_;
 }
 
