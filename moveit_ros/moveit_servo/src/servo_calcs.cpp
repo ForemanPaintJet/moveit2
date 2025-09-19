@@ -752,7 +752,7 @@ bool ServoCalcs::applyJointUpdate(const Eigen::ArrayXd& delta_theta, sensor_msgs
     joint_state.position[i] += delta_theta[i];
   }
 
-  smoother_->doSmoothing(joint_state.position);
+  //smoother_->doSmoothing(joint_state.position);
 
   for (std::size_t i = 0; i < joint_state.position.size(); ++i)
   {
@@ -938,13 +938,6 @@ void ServoCalcs::updateJoints()
 {
   // Use only active joint names (skips mimic/passive joints)
   const auto& active_joint_names = joint_model_group_->getActiveJointModelNames();
-  RCLCPP_INFO(rclcpp::get_logger("servo_debug"),
-              "Group '%s' has %zu active joints:", joint_model_group_->getName().c_str(), active_joint_names.size());
-
-  for (const auto& name : active_joint_names)
-  {
-    RCLCPP_INFO(rclcpp::get_logger("servo_debug"), "  %s", name.c_str());
-  }
 
   // Get the latest robot state
   current_state_ = planning_scene_monitor_->getStateMonitor()->getCurrentState();
