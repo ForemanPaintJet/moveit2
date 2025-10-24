@@ -85,7 +85,8 @@ bool PointCloudOctomapUpdater::setParams(const std::string& name_space)
          node_->get_parameter(name_space + ".padding_scale", scale_) &&
          node_->get_parameter(name_space + ".point_subsample", point_subsample_) &&
          node_->get_parameter(name_space + ".max_update_rate", max_update_rate_) &&
-         node_->get_parameter(name_space + ".filtered_cloud_topic", filtered_cloud_topic_);
+         node_->get_parameter(name_space + ".filtered_cloud_topic", filtered_cloud_topic_) &&
+         node_->get_parameter(name_space + ".mask_robot", mask_robot_);
 }
 
 bool PointCloudOctomapUpdater::initialize(const rclcpp::Node::SharedPtr& node)
@@ -234,8 +235,11 @@ void PointCloudOctomapUpdater::cloudMsgCallback(const sensor_msgs::msg::PointClo
     return;
 
   /* mask out points on the robot */
-  shape_mask_->maskContainment(*cloud_msg, sensor_origin_eigen, 0.0, max_range_, mask_);
-  updateMask(*cloud_msg, sensor_origin_eigen, mask_);
+  if (mask_robot_)
+  {
+    shape_mask_->maskContainment(*cloud_msg, sensor_origin_eigen, 0.0, max_range_, mask_);
+    updateMask(*cloud_msg, sensor_origin_eigen, mask_);
+  }
 
   octomap::KeySet free_cells, occupied_cells, model_cells, clip_cells;
   std::unique_ptr<sensor_msgs::msg::PointCloud2> filtered_cloud;
@@ -285,7 +289,7 @@ void PointCloudOctomapUpdater::cloudMsgCallback(const sensor_msgs::msg::PointClo
         {
           /* occupied cell at ray endpoint if ray is shorter than max range and this point
              isn't on a part of the robot*/
-          if (mask_[row_c + col] == point_containment_filter::ShapeMask::INSIDE)
+          if (!mask_robot_ || mask_[row_c + col] == point_containment_filter::ShapeMask::INSIDE)
           {
             // transform to map frame
             tf2::Vector3 point_tf = map_h_sensor * tf2::Vector3(pt_iter[0], pt_iter[1], pt_iter[2]);
